@@ -27,6 +27,10 @@ Paper & ink. Warm off-white paper, near-black ink text, one accent.
 
 No gradients. Accent is sparing: primary action, selected template, focus.
 
+**Ceremonial template palette (sheet only, not app chrome):** navy ink `#1E3A8A`, muted `#4C6699`, blue accent `#1D4ED8`, rule `#BFDBFE` on white. Contrast checked: navy/muted/blue on white all ≥4.5:1.
+
+**Academy template palette (sheet only; reference: user-supplied Appkademiya image):** navy `#0A1633`, muted `#3D4A66`, electric blue `#1A56F5`, rule `#C5D0E8` on light gray `#F7F8FA`. Right side: electric-blue underlay with a thin diagonal edge band under a navy panel (same clip path, ~2% offset); real logo from `public/appkademiya-logo.png` on the navy (no invented mark). Content column ends before the blue edge (`pr` ≥ panel width). Contrast: navy/muted/blue on light and white on navy all ≥4.5:1.
+
 ## Typography
 
 - **Display / headings**: Libre Baskerville. Reason: sturdy bookish serif that reads as institutional document (awards, diplomas), not fashion editorial. Used for page title, section titles, and certificate preview text.
@@ -58,9 +62,12 @@ The page is a **desk**, not a document of equal sections (R-05).
 | CSV-only recipients (`name` header) | Mass tool: one source of truth for names; no single recipient field |
 | Optional PNG logo + PNG signature | Real assets on the certificate; PNG-only keeps export simple |
 | Signature text or image | Either a printed name or an uploaded signature, not both fighting |
+| Optional second signatory | Toggle stacks a second name/title (or second PNG) above the primary; date keeps a narrower third of the footer row |
 | Multi-line recognition | Recognition accepts Enter; newlines print as separate lines |
 | Editable subtext with tokens | Default sentence under Recognition; `{{name}}` / `{{recognition}}` fill per recipient |
 | Export 1 → PNG, 2+ → ZIP | Matches batch size; single file when only one name, archive when many |
+| Ceremonial template (blue/white seal) | Fourth formal option: double blue frame, seal mark, centered ceremonial type |
+| Academy template (navy/electric diagonal) | Fifth option from owner reference image: light gray sheet, blue edge band under diagonal navy panel, `public/appkademiya-logo.png` on navy |
 
 Mobile: one column, order = bar → template strip → fields → full-width sheet. Tap targets ≥44px.
 
@@ -68,12 +75,12 @@ Mobile: one column, order = bar → template strip → fields → full-width she
 
 Generator workspace (single page):
 
-1. Slim top bar (wordmark + one utility line; no invented logo mark)
-2. Template swatches + portrait/landscape orientation (visual minis, docked with preview)
-3. Dense shared fields (organization, recognition, editable subtext, date)
+1. Slim top bar (wordmark + one utility line; no invented logo mark — Appkademiya mark is `public/appkademiya-logo.png` on Academy only)
+2. Template swatches (Classic, Modern, Minimal, Ceremonial, Academy) + portrait/landscape orientation (visual minis, docked with preview)
+3. Dense shared fields (organization, recognition, editable subtext, date → prints as MM/DD/YYYY on the sheet)
 4. Required CSV upload: header must include a `name` column; preview uses the first row
 5. Optional organization logo (PNG only)
-6. Signature: text fields or PNG upload + optional signer title
+6. Signature: text fields or PNG upload + optional signer title; optional second signatory (text or PNG)
 7. Live preview sheet on a desk mat; multi-recipient CSVs also get a paginated preview grid (select a name to load it on the desk)
 8. Export: 1 recipient downloads a PNG; 2+ recipients download `certificates.zip` of PNGs
 

@@ -1,11 +1,16 @@
 "use client";
 
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { toPng } from "html-to-image";
 import JSZip from "jszip";
 
-type TemplateId = "classic" | "modern" | "minimal";
+type TemplateId =
+  | "classic"
+  | "modern"
+  | "minimal"
+  | "ceremonial"
+  | "academy";
 type Orientation = "portrait" | "landscape";
 type SignatureMode = "text" | "image";
 
@@ -13,7 +18,66 @@ const templates: { id: TemplateId; label: string }[] = [
   { id: "classic", label: "Classic" },
   { id: "modern", label: "Modern" },
   { id: "minimal", label: "Minimal" },
+  { id: "ceremonial", label: "Ceremonial" },
+  { id: "academy", label: "Academy" },
 ];
+
+const ceremonialTheme: CSSProperties = {
+  "--ink": "#1E3A8A",
+  "--ink-muted": "#4C6699",
+  "--accent": "#1D4ED8",
+  "--accent-hover": "#1E40AF",
+  "--rule": "#BFDBFE",
+} as CSSProperties;
+
+const academyTheme: CSSProperties = {
+  "--ink": "#0A1633",
+  "--ink-muted": "#3D4A66",
+  "--accent": "#1A56F5",
+  "--accent-hover": "#0F45D4",
+  "--rule": "#C5D0E8",
+} as CSSProperties;
+
+function templateTheme(template: TemplateId): CSSProperties | undefined {
+  if (template === "ceremonial") return ceremonialTheme;
+  if (template === "academy") return academyTheme;
+  return undefined;
+}
+
+function sheetBorderClass(template: TemplateId): string {
+  if (template === "classic") return "border-4 border-double border-ink p-5 sm:p-8";
+  if (template === "modern")
+    return "border-l-8 border-t border-r border-b border-accent p-5 sm:p-8";
+  if (template === "ceremonial")
+    return "border-4 border-double border-accent p-5 sm:p-8";
+  if (template === "academy") return "border border-rule p-0";
+  return "border border-rule p-5 sm:p-8";
+}
+
+function exportBorderClass(template: TemplateId): string {
+  if (template === "classic") return "border-4 border-double border-ink p-10";
+  if (template === "modern")
+    return "border-l-8 border-t border-r border-b border-accent p-10";
+  if (template === "ceremonial")
+    return "border-4 border-double border-accent p-10";
+  if (template === "academy") return "border border-rule p-0";
+  return "border border-rule p-10";
+}
+
+function miniBorderClass(template: TemplateId): string {
+  if (template === "classic") return "border-2 border-double border-ink p-6";
+  if (template === "modern")
+    return "border-l-8 border-t border-r border-b border-accent p-6";
+  if (template === "ceremonial")
+    return "border-2 border-double border-accent p-6";
+  if (template === "academy") return "border border-rule p-0";
+  return "border border-rule p-6";
+}
+
+function sheetBgClass(template: TemplateId): string {
+  if (template === "academy") return "overflow-hidden bg-[#F7F8FA]";
+  return "bg-white";
+}
 
 const orientations: { id: Orientation; label: string }[] = [
   { id: "portrait", label: "Portrait" },
@@ -49,6 +113,8 @@ type Fields = {
   date: string;
   signerName: string;
   signerTitle: string;
+  signer2Name: string;
+  signer2Title: string;
 };
 
 const defaultSubtext =
@@ -61,6 +127,8 @@ const emptyFields: Fields = {
   date: "",
   signerName: "",
   signerTitle: "",
+  signer2Name: "",
+  signer2Title: "",
 };
 
 function resolveSubtext(
@@ -80,11 +148,9 @@ function formatDisplayDate(value: string): string {
   if (!value) return "";
   const parsed = new Date(`${value}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getDate()).padStart(2, "0");
+  return `${month}/${day}/${parsed.getFullYear()}`;
 }
 
 function isCsvFileName(name: string): boolean {
@@ -213,6 +279,10 @@ export function CertificateWorkspace() {
   const [signatureImage, setSignatureImage] = useState<ImageAsset>({
     status: "empty",
   });
+  const [hasSecondSignatory, setHasSecondSignatory] = useState(false);
+  const [signature2Image, setSignature2Image] = useState<ImageAsset>({
+    status: "empty",
+  });
   const [isExporting, setIsExporting] = useState(false);
   const [exportRecipient, setExportRecipient] = useState("");
   const [selectedName, setSelectedName] = useState<string | null>(null);
@@ -292,6 +362,8 @@ export function CertificateWorkspace() {
     setLogo({ status: "empty" });
     setSignatureMode("text");
     setSignatureImage({ status: "empty" });
+    setHasSecondSignatory(false);
+    setSignature2Image({ status: "empty" });
     setSelectedName(null);
     setGalleryPage(0);
     setNotice(null);
@@ -386,6 +458,12 @@ export function CertificateWorkspace() {
     signatureMode === "image" && signatureImage.status === "ready"
       ? signatureImage.dataUrl
       : null;
+  const signature2Src =
+    hasSecondSignatory &&
+    signatureMode === "image" &&
+    signature2Image.status === "ready"
+      ? signature2Image.dataUrl
+      : null;
   const activeTemplate =
     templates.find((item) => item.id === template)?.label ?? "Classic";
   const activeOrientation =
@@ -404,6 +482,8 @@ export function CertificateWorkspace() {
     subtextEmpty,
     logoSrc,
     signatureSrc,
+    hasSecondSignatory,
+    signature2Src,
   };
 
   const galleryPageSize = 8;
@@ -626,6 +706,71 @@ export function CertificateWorkspace() {
                     />
                   </>
                 )}
+
+                <div className="flex flex-col gap-2 border-t border-rule pt-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHasSecondSignatory((on) => !on);
+                      setNotice(null);
+                    }}
+                    aria-pressed={hasSecondSignatory}
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-field-border bg-paper px-4 py-2.5 text-sm font-semibold text-ink transition-colors duration-150 hover:bg-paper-raised"
+                  >
+                    {hasSecondSignatory
+                      ? "Remove second signatory"
+                      : "Add second signatory"}
+                  </button>
+
+                  {hasSecondSignatory ? (
+                    <div className="flex flex-col gap-4 rounded-md border border-rule bg-paper-raised p-3">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted">
+                        Second signatory
+                      </p>
+                      {signatureMode === "text" ? (
+                        <>
+                          <Field
+                            id="signer2Name"
+                            label="Signed by"
+                            value={fields.signer2Name}
+                            onChange={(v) => update("signer2Name", v)}
+                            placeholder="Printed name"
+                            autoComplete="off"
+                          />
+                          <Field
+                            id="signer2Title"
+                            label="Signer title"
+                            value={fields.signer2Title}
+                            onChange={(v) => update("signer2Title", v)}
+                            placeholder="Role or position"
+                            autoComplete="off"
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <ImageUpload
+                            id="signature2-upload"
+                            label="Second signature (PNG)"
+                            hint="Used in place of the printed name."
+                            asset={signature2Image}
+                            onChange={(asset) => {
+                              setSignature2Image(asset);
+                              setNotice(null);
+                            }}
+                          />
+                          <Field
+                            id="signer2Title"
+                            label="Signer title"
+                            value={fields.signer2Title}
+                            onChange={(v) => update("signer2Title", v)}
+                            placeholder="Role or position"
+                            autoComplete="off"
+                          />
+                        </>
+                      )}
+                    </div>
+                  ) : null}
+                </div>
               </div>
 
               <div className="flex flex-col gap-2 border-t border-rule pt-4">
@@ -748,21 +893,10 @@ export function CertificateWorkspace() {
             <div className="mt-5 bg-desk p-4 sm:p-8">
               <div
                 key={`${template}-${orientation}`}
-                className={`relative mx-auto ${sheetAspect} w-full ${sheetMaxWidth} animate-[fade-in_180ms_ease-out] bg-white shadow-[0_12px_28px_-12px_rgba(28,26,23,0.35),0_2px_6px_rgba(28,26,23,0.12)] ${
-                  template === "classic"
-                    ? "border-4 border-double border-ink p-5 sm:p-8"
-                    : template === "modern"
-                      ? "border-l-8 border-t border-r border-b border-accent p-5 sm:p-8"
-                      : "border border-rule p-5 sm:p-8"
-                }`}
+                style={templateTheme(template)}
+                className={`relative mx-auto ${sheetAspect} w-full ${sheetMaxWidth} animate-[fade-in_180ms_ease-out] shadow-[0_12px_28px_-12px_rgba(28,26,23,0.35),0_2px_6px_rgba(28,26,23,0.12)] ${sheetBgClass(template)} ${sheetBorderClass(template)}`}
               >
-                {template === "classic" ? (
-                  <ClassicCertificate {...sharedCertProps} />
-                ) : template === "modern" ? (
-                  <ModernCertificate {...sharedCertProps} />
-                ) : (
-                  <MinimalCertificate {...sharedCertProps} />
-                )}
+                {renderCertificate(template, sharedCertProps)}
               </div>
             </div>
 
@@ -879,34 +1013,15 @@ export function CertificateWorkspace() {
           height: orientation === "portrait" ? 1100 : 850,
           pointerEvents: "none",
           zIndex: -1,
+          ...templateTheme(template),
         }}
-        className={`box-border bg-white ${
-          template === "classic"
-            ? "border-4 border-double border-ink p-10"
-            : template === "modern"
-              ? "border-l-8 border-t border-r border-b border-accent p-10"
-              : "border border-rule p-10"
-        }`}
+        className={`box-border ${sheetBgClass(template)} ${exportBorderClass(template)}`}
       >
-        {template === "classic" ? (
-          <ClassicCertificate
-            {...sharedCertProps}
-            recipientName={exportRecipient}
-            recipientEmpty={exportRecipient.trim() === ""}
-          />
-        ) : template === "modern" ? (
-          <ModernCertificate
-            {...sharedCertProps}
-            recipientName={exportRecipient}
-            recipientEmpty={exportRecipient.trim() === ""}
-          />
-        ) : (
-          <MinimalCertificate
-            {...sharedCertProps}
-            recipientName={exportRecipient}
-            recipientEmpty={exportRecipient.trim() === ""}
-          />
-        )}
+        {renderCertificate(template, {
+          ...sharedCertProps,
+          recipientName: exportRecipient,
+          recipientEmpty: exportRecipient.trim() === "",
+        })}
       </div>
     </div>
   );
@@ -948,6 +1063,52 @@ function SwatchPreview({
           <span className="block h-1 w-3/4 bg-ink/70" />
           <span className="block h-0.5 w-1/2 bg-ink-muted/50" />
           <span className="block h-0.5 w-2/3 bg-ink-muted/40" />
+        </span>
+      </span>
+    );
+  }
+
+  if (templateId === "ceremonial") {
+    return (
+      <span
+        aria-hidden
+        style={ceremonialTheme}
+        className={`flex h-10 w-full border-2 border-double ${active ? "border-accent" : "border-field-border"} p-1`}
+      >
+        <span className="flex flex-1 flex-col items-center justify-center gap-0.5">
+          <span className="block h-1 w-8 bg-accent/70" />
+          <span className="block h-0.5 w-5 rounded-full bg-accent" />
+          <span className="block h-0.5 w-6 bg-ink-muted/50" />
+        </span>
+        <span className="mx-0.5 my-1 w-3 shrink-0 rounded-full border border-accent" />
+        <span className="flex flex-1 flex-col items-center justify-center gap-0.5">
+          <span className="block h-1 w-8 bg-accent/70" />
+          <span className="block h-0.5 w-5 rounded-full bg-accent" />
+          <span className="block h-0.5 w-6 bg-ink-muted/50" />
+        </span>
+      </span>
+    );
+  }
+
+  if (templateId === "academy") {
+    return (
+      <span
+        aria-hidden
+        style={academyTheme}
+        className="relative block h-10 w-full overflow-hidden border bg-[#F7F8FA]"
+      >
+        <span
+          className="absolute inset-y-0 right-0 w-[46%] bg-[#1A56F5]"
+          style={{ clipPath: "polygon(13.4% 0, 100% 0, 100% 100%, 0 100%)" }}
+        />
+        <span
+          className="absolute inset-y-0 right-0 w-[44%] bg-[#0A1633]"
+          style={{ clipPath: "polygon(14% 0, 100% 0, 100% 100%, 0 100%)" }}
+        />
+        <span className="absolute left-1.5 top-2 flex w-[44%] flex-col gap-1">
+          <span className="block h-1 w-full bg-ink/70" />
+          <span className="block h-0.5 w-3/4 bg-ink-muted/50" />
+          <span className="block h-0.5 w-1/2 bg-accent" />
         </span>
       </span>
     );
@@ -1044,6 +1205,8 @@ function renderCertificate(
 ) {
   if (template === "classic") return <ClassicCertificate {...props} />;
   if (template === "modern") return <ModernCertificate {...props} />;
+  if (template === "ceremonial") return <CeremonialCertificate {...props} />;
+  if (template === "academy") return <AcademyCertificate {...props} />;
   return <MinimalCertificate {...props} />;
 }
 
@@ -1062,13 +1225,6 @@ function CertificateMini({
   const scale = displayW / srcW;
   const displayH = Math.round(srcH * scale);
 
-  const borderClass =
-    template === "classic"
-      ? "border-2 border-double border-ink p-6"
-      : template === "modern"
-        ? "border-l-8 border-t border-r border-b border-accent p-6"
-        : "border border-rule p-6";
-
   return (
     <div
       className="relative overflow-hidden bg-white"
@@ -1083,8 +1239,9 @@ function CertificateMini({
           position: "absolute",
           top: 0,
           left: 0,
+          ...templateTheme(template),
         }}
-        className={`box-border bg-white ${borderClass}`}
+        className={`box-border ${sheetBgClass(template)} ${miniBorderClass(template)}`}
       >
         {children}
       </div>
@@ -1199,6 +1356,8 @@ type CertificateBaseProps = {
   subtextEmpty: boolean;
   logoSrc: string | null;
   signatureSrc: string | null;
+  hasSecondSignatory: boolean;
+  signature2Src: string | null;
 };
 
 function SubtextLine({
@@ -1264,31 +1423,37 @@ function OrgMark({
   );
 }
 
-function SignatureBlock({
-  fields,
-  signatureSrc,
+function SignatoryColumn({
+  name,
+  title,
+  imageSrc,
   align = "left",
+  className = "",
 }: {
-  fields: Fields;
-  signatureSrc: string | null;
+  name: string;
+  title: string;
+  imageSrc: string | null;
   align?: "left" | "right";
+  className?: string;
 }) {
   const alignClass = align === "right" ? "text-right" : "text-left";
 
-  if (signatureSrc) {
+  if (imageSrc) {
     return (
-      <div className={`min-w-0 flex-1 ${alignClass}`}>
+      <div className={`min-w-0 ${alignClass} ${className}`}>
         <div className="border-b border-ink pb-1">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={signatureSrc}
+            src={imageSrc}
             alt="Signature"
-            className="mx-auto h-10 w-auto max-w-full object-contain object-bottom"
+            className={`h-10 w-auto max-w-full object-contain object-bottom ${
+              align === "right" ? "ml-auto" : "mr-auto"
+            }`}
             style={align === "left" ? { marginLeft: 0 } : { marginRight: 0 }}
           />
         </div>
         <Slot
-          value={fields.signerTitle}
+          value={title}
           placeholder="Title"
           className="mt-1 block font-sans text-xs text-ink-muted"
         />
@@ -1297,19 +1462,105 @@ function SignatureBlock({
   }
 
   return (
-    <div className={`min-w-0 flex-1 ${alignClass}`}>
+    <div className={`min-w-0 ${alignClass} ${className}`}>
       <div className="border-b border-ink pb-1">
         <Slot
-          value={fields.signerName}
+          value={name}
           placeholder="Signer"
           className="font-serif text-sm font-bold text-ink"
         />
       </div>
       <Slot
-        value={fields.signerTitle}
+        value={title}
         placeholder="Title"
         className="mt-1 block font-sans text-xs text-ink-muted"
       />
+    </div>
+  );
+}
+
+function SignatoriesRow({
+  fields,
+  signatureSrc,
+  hasSecondSignatory,
+  signature2Src,
+  dateDisplay,
+  align = "left",
+  dateOnSide = false,
+  classicDate = false,
+}: {
+  fields: Fields;
+  signatureSrc: string | null;
+  hasSecondSignatory: boolean;
+  signature2Src: string | null;
+  dateDisplay: string;
+  align?: "left" | "right";
+  dateOnSide?: boolean;
+  classicDate?: boolean;
+}) {
+  const primarySignatory = (
+    <SignatoryColumn
+      name={fields.signerName}
+      title={fields.signerTitle}
+      imageSrc={signatureSrc}
+      align={align}
+      className="w-full"
+    />
+  );
+  const secondarySignatory = hasSecondSignatory ? (
+    <SignatoryColumn
+      name={fields.signer2Name}
+      title={fields.signer2Title}
+      imageSrc={signature2Src}
+      align={align}
+      className="w-full"
+    />
+  ) : null;
+
+  const signatories = hasSecondSignatory ? (
+    <div className="flex min-w-0 flex-[3] flex-col gap-4">
+      {secondarySignatory}
+      {primarySignatory}
+    </div>
+  ) : (
+    <div className="flex min-w-0 flex-[3] gap-4">
+      <div className="flex min-w-0 flex-1">{primarySignatory}</div>
+    </div>
+  );
+
+  if (classicDate) {
+    return (
+      <div className="flex w-full items-end justify-between gap-5 text-left">
+        {signatories}
+        <div className="min-w-0 flex-1 text-right">
+          <p className="border-b border-ink pb-1 font-serif text-sm text-ink">
+            {dateDisplay || (
+              <span className="italic text-ink-muted">Date</span>
+            )}
+          </p>
+          <p className="mt-1 font-sans text-xs text-ink-muted">Date issued</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (dateOnSide) {
+    return (
+      <div className="flex flex-wrap items-end justify-between gap-4 border-t border-rule pt-5">
+        {signatories}
+        <p className="min-w-0 flex-1 text-right font-sans text-xs text-ink-muted">
+          {dateDisplay || "Date"}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-3 border-t border-rule pt-4">
+      {signatories}
+      <p className="min-w-0 flex-1 text-right text-xs text-ink-muted">
+        {dateDisplay || "Date"}
+      </p>
     </div>
   );
 }
@@ -1322,6 +1573,8 @@ function ClassicCertificate({
   subtextEmpty,
   logoSrc,
   signatureSrc,
+  hasSecondSignatory,
+  signature2Src,
 }: CertificateBaseProps) {
   return (
     <div className="flex h-full flex-col items-center justify-between text-center">
@@ -1360,21 +1613,15 @@ function ClassicCertificate({
         />
       </div>
 
-      <div className="flex w-full items-end justify-between gap-4 text-left">
-        <SignatureBlock
-          fields={fields}
-          signatureSrc={signatureSrc}
-          align="left"
-        />
-        <div className="min-w-0 flex-1 text-right">
-          <p className="border-b border-ink pb-1 font-serif text-sm text-ink">
-            {dateDisplay || (
-              <span className="italic text-ink-muted">Date</span>
-            )}
-          </p>
-          <p className="mt-1 font-sans text-xs text-ink-muted">Date issued</p>
-        </div>
-      </div>
+      <SignatoriesRow
+        fields={fields}
+        signatureSrc={signatureSrc}
+        hasSecondSignatory={hasSecondSignatory}
+        signature2Src={signature2Src}
+        dateDisplay={dateDisplay}
+        align="left"
+        classicDate
+      />
     </div>
   );
 }
@@ -1388,6 +1635,8 @@ function ModernCertificate({
   subtextEmpty,
   logoSrc,
   signatureSrc,
+  hasSecondSignatory,
+  signature2Src,
 }: CertificateBaseProps) {
   return (
     <div className="flex h-full flex-col text-left">
@@ -1436,40 +1685,116 @@ function ModernCertificate({
         </div>
       </div>
 
-      <div className="mt-auto flex flex-wrap items-end justify-between gap-4 border-t border-rule pt-5">
-        <div className="min-w-0 flex-1">
-          {signatureSrc ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
+      <SignatoriesRow
+        fields={fields}
+        signatureSrc={signatureSrc}
+        hasSecondSignatory={hasSecondSignatory}
+        signature2Src={signature2Src}
+        dateDisplay={dateDisplay}
+        align="left"
+        classicDate
+      />
+    </div>
+  );
+}
+
+function AcademyDecor() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0">
+      <div
+        className="absolute inset-y-0 right-0 w-[46%] bg-[#1A56F5]"
+        style={{ clipPath: "polygon(13.4% 0, 100% 0, 100% 100%, 0 100%)" }}
+      />
+      <div
+        className="absolute inset-y-0 right-0 w-[44%] bg-[#0A1633]"
+        style={{ clipPath: "polygon(14% 0, 100% 0, 100% 100%, 0 100%)" }}
+      />
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/appkademiya-logo.png"
+        alt=""
+        className="absolute bottom-6 right-4 h-16 w-16 object-contain opacity-90 sm:bottom-8 sm:right-6 sm:h-20 sm:w-20"
+      />
+    </div>
+  );
+}
+
+function AcademyCertificate({
+  fields,
+  dateDisplay,
+  recipientName,
+  recipientEmpty,
+  recognitionEmpty,
+  subtextEmpty,
+  logoSrc,
+  signatureSrc,
+  hasSecondSignatory,
+  signature2Src,
+}: CertificateBaseProps) {
+  return (
+    <div className="relative h-full overflow-hidden">
+      <AcademyDecor />
+      <div className="relative z-10 flex h-full flex-col justify-between p-5 pr-[50%] sm:p-8 sm:pr-[48%]">
+        <div className="min-w-0">
+          <div className="flex items-center gap-3">
+            {logoSrc ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
               <img
-                src={signatureSrc}
-                alt="Signature"
-                className="h-10 w-auto max-w-full object-contain object-bottom"
+                src={logoSrc}
+                alt=""
+                className="max-h-10 w-auto max-w-[6rem] shrink-0 object-contain"
               />
-              <Slot
-                value={fields.signerTitle}
-                placeholder="Title"
-                className="mt-1 block font-sans text-xs text-ink-muted"
-              />
-            </>
-          ) : (
-            <>
-              <Slot
-                value={fields.signerName}
-                placeholder="Signer"
-                className="block font-sans text-sm font-semibold text-ink"
-              />
-              <Slot
-                value={fields.signerTitle}
-                placeholder="Title"
-                className="mt-0.5 block font-sans text-xs text-ink-muted"
-              />
-            </>
-          )}
+            ) : null}
+            <Slot
+              value={fields.organization}
+              placeholder="Organization"
+              className="block min-w-0 truncate font-sans text-xs font-semibold uppercase tracking-widest text-ink-muted"
+            />
+          </div>
+
+          <p className="mt-5 font-sans text-xs font-semibold uppercase tracking-[0.16em] text-accent">
+            Certificate of achievement
+          </p>
         </div>
-        <p className="font-sans text-xs text-ink-muted">
-          {dateDisplay || "Date"}
-        </p>
+
+        <div className="my-auto min-w-0 py-6">
+          <p className="font-sans text-sm text-ink-muted">Awarded to</p>
+          <div className="mt-1 border-b-2 border-accent pb-2">
+            <Slot
+              value={recipientName}
+              placeholder="Recipient name (CSV)"
+              className={`block font-serif text-2xl font-bold leading-tight text-ink sm:text-3xl ${
+                recipientEmpty ? "" : "break-words"
+              }`}
+            />
+          </div>
+
+          <div className="mt-4">
+            <Slot
+              value={fields.recognition}
+              placeholder="Recognition title"
+              className={`block whitespace-pre-wrap font-sans text-base font-semibold text-ink ${
+                recognitionEmpty ? "" : "break-words"
+              }`}
+            />
+            <SubtextLine
+              fields={fields}
+              recipientName={recipientName}
+              empty={subtextEmpty}
+              className="mt-2 text-sm leading-6"
+            />
+          </div>
+        </div>
+
+        <SignatoriesRow
+          fields={fields}
+          signatureSrc={signatureSrc}
+          hasSecondSignatory={hasSecondSignatory}
+          signature2Src={signature2Src}
+          dateDisplay={dateDisplay}
+          align="left"
+          classicDate
+        />
       </div>
     </div>
   );
@@ -1484,6 +1809,8 @@ function MinimalCertificate({
   subtextEmpty,
   logoSrc,
   signatureSrc,
+  hasSecondSignatory,
+  signature2Src,
 }: CertificateBaseProps) {
   return (
     <div className="flex h-full flex-col">
@@ -1527,39 +1854,110 @@ function MinimalCertificate({
         </div>
       </div>
 
-      <div className="flex flex-wrap items-end justify-between gap-3 border-t border-rule pt-4">
-        <div className="min-w-0 flex-1">
-          {signatureSrc ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={signatureSrc}
-                alt="Signature"
-                className="h-9 w-auto max-w-full object-contain object-bottom"
-              />
-              <Slot
-                value={fields.signerTitle}
-                placeholder="Title"
-                className="mt-1 block text-xs text-ink-muted"
-              />
-            </>
-          ) : (
-            <>
-              <Slot
-                value={fields.signerName}
-                placeholder="Signer"
-                className="block text-sm font-semibold text-ink"
-              />
-              <Slot
-                value={fields.signerTitle}
-                placeholder="Title"
-                className="mt-0.5 block text-xs text-ink-muted"
-              />
-            </>
-          )}
+      <SignatoriesRow
+        fields={fields}
+        signatureSrc={signatureSrc}
+        hasSecondSignatory={hasSecondSignatory}
+        signature2Src={signature2Src}
+        dateDisplay={dateDisplay}
+        align="left"
+      />
+    </div>
+  );
+}
+
+function SealMark() {
+  return (
+    <span
+      aria-hidden
+      className="relative mx-auto flex h-14 w-14 items-center justify-center rounded-full border-2 border-accent"
+    >
+      <span className="absolute inset-1.5 rounded-full border border-accent/60" />
+      <span className="block h-2 w-2 rotate-45 bg-accent" />
+    </span>
+  );
+}
+
+function CeremonialCertificate({
+  fields,
+  dateDisplay,
+  recipientName,
+  recipientEmpty,
+  recognitionEmpty,
+  subtextEmpty,
+  logoSrc,
+  signatureSrc,
+  hasSecondSignatory,
+  signature2Src,
+}: CertificateBaseProps) {
+  return (
+    <div className="flex h-full flex-col items-center justify-between text-center">
+      <div className="w-full">
+        <div className="flex flex-col items-center gap-3">
+          {logoSrc ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={logoSrc}
+              alt=""
+              className="max-h-12 w-auto max-w-[8rem] object-contain"
+            />
+          ) : null}
+          <Slot
+            value={fields.organization}
+            placeholder="Organization"
+            className="block font-sans text-xs font-semibold uppercase tracking-widest text-ink-muted"
+          />
         </div>
-        <p className="text-xs text-ink-muted">{dateDisplay || "Date"}</p>
+
+        <p className="mt-5 font-serif text-sm uppercase tracking-[0.18em] text-accent">
+          Certificate of achievement
+        </p>
+
+        <div className="mt-4">
+          <SealMark />
+        </div>
+
+        <p className="mt-4 font-serif text-sm italic text-ink-muted">
+          This certifies that
+        </p>
+        <div className="mx-auto mt-2 max-w-[36rem] border-b-2 border-accent pb-2">
+          <Slot
+            value={recipientName}
+            placeholder="Recipient name (CSV)"
+            className={`font-serif text-2xl font-bold text-ink sm:text-3xl ${
+              recipientEmpty ? "" : "break-words"
+            }`}
+          />
+        </div>
+        <p className="mt-4 font-serif text-sm italic text-ink-muted">
+          has completed
+        </p>
+        <div className="mx-auto mt-2 max-w-[36rem]">
+          <Slot
+            value={fields.recognition}
+            placeholder="Recognition title"
+            className={`block whitespace-pre-wrap font-serif text-lg font-bold text-ink sm:text-xl ${
+              recognitionEmpty ? "" : "break-words"
+            }`}
+          />
+          <SubtextLine
+            fields={fields}
+            recipientName={recipientName}
+            empty={subtextEmpty}
+            className="mx-auto mt-3 max-w-[32rem] font-sans text-sm leading-6"
+          />
+        </div>
       </div>
+
+      <SignatoriesRow
+        fields={fields}
+        signatureSrc={signatureSrc}
+        hasSecondSignatory={hasSecondSignatory}
+        signature2Src={signature2Src}
+        dateDisplay={dateDisplay}
+        align="left"
+        classicDate
+      />
     </div>
   );
 }
