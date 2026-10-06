@@ -77,9 +77,9 @@ Generator workspace (single page):
 
 1. Slim top bar (wordmark + one utility line; no invented logo mark — Appkademiya mark is `public/appkademiya-logo.png` on Academy only)
 2. Template swatches (Classic, Modern, Minimal, Ceremonial, Academy) + portrait/landscape orientation (visual minis, docked with preview)
-3. Dense shared fields (organization, recognition, editable subtext, date → prints as MM/DD/YYYY on the sheet)
+3. Dense shared fields (optional organization — blank when the logo already has the name; recognition; editable subtext; date → prints as MM/DD/YYYY on the sheet)
 4. Required CSV upload: header must include a `name` column; preview uses the first row
-5. Optional organization logo (PNG only)
+5. Optional organization logo (PNG only); organization text is optional and hidden when blank
 6. Signature: text fields or PNG upload + optional signer title; optional second signatory (text or PNG)
 7. Live preview sheet on a desk mat; multi-recipient CSVs also get a paginated preview grid (select a name to load it on the desk)
 8. Export: 1 recipient downloads a PNG; 2+ recipients download `certificates.zip` of PNGs

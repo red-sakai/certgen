@@ -523,11 +523,12 @@ export function CertificateWorkspace() {
               <div className="flex flex-col gap-4 border-t border-rule pt-4">
                 <Field
                   id="organization"
-                  label="Organization"
+                  label="Organization (optional)"
                   value={fields.organization}
                   onChange={(v) => update("organization", v)}
-                  placeholder="Name on the certificate"
+                  placeholder="Leave empty if the logo already includes the name"
                   autoComplete="organization"
+                  hint="Optional. Leave blank when your organization logo already carries the name."
                 />
                 <ImageUpload
                   id="logo-upload"
@@ -1133,6 +1134,7 @@ function Field({
   placeholder,
   type = "text",
   autoComplete,
+  hint,
 }: {
   id: string;
   label: string;
@@ -1141,6 +1143,7 @@ function Field({
   placeholder: string;
   type?: string;
   autoComplete?: string;
+  hint?: string;
 }) {
   return (
     <div className="flex flex-col gap-1.5">
@@ -1157,6 +1160,9 @@ function Field({
         autoComplete={autoComplete}
         className="min-h-11 w-full rounded-md border border-field-border bg-white px-3 py-2.5 text-base text-ink placeholder:text-ink-muted transition-colors duration-150 hover:border-ink-muted focus:border-accent focus:outline-none focus-visible:outline-2 focus-visible:outline-accent"
       />
+      {hint ? (
+        <p className="text-xs leading-5 text-ink-muted">{hint}</p>
+      ) : null}
     </div>
   );
 }
@@ -1336,15 +1342,15 @@ function Slot({
   className?: string;
 }) {
   const empty = value.trim() === "";
-  return (
-    <span className={className}>
-      {empty ? (
-        <span className="text-ink-muted italic">{placeholder}</span>
-      ) : (
-        value
-      )}
-    </span>
-  );
+  if (empty) {
+    if (!placeholder) return null;
+    return (
+      <span className={`text-ink-muted italic ${className}`.trim()}>
+        {placeholder}
+      </span>
+    );
+  }
+  return <span className={className}>{value}</span>;
 }
 
 type CertificateBaseProps = {
@@ -1396,6 +1402,9 @@ function OrgMark({
   organization: string;
   className?: string;
 }) {
+  const orgText = organization.trim();
+  if (!logoSrc && !orgText) return null;
+
   if (logoSrc) {
     return (
       <div className={`flex items-center justify-center gap-3 ${className}`}>
@@ -1405,11 +1414,13 @@ function OrgMark({
           alt=""
           className="max-h-12 w-auto max-w-[8rem] object-contain"
         />
-        <Slot
-          value={organization}
-          placeholder="Organization"
-          className="font-sans text-xs font-semibold uppercase tracking-widest text-ink-muted"
-        />
+        {orgText ? (
+          <Slot
+            value={organization}
+            placeholder=""
+            className="font-sans text-xs font-semibold uppercase tracking-widest text-ink-muted"
+          />
+        ) : null}
       </div>
     );
   }
@@ -1417,7 +1428,7 @@ function OrgMark({
   return (
     <Slot
       value={organization}
-      placeholder="Organization"
+      placeholder=""
       className={`block font-sans text-xs font-semibold uppercase tracking-widest text-ink-muted ${className}`}
     />
   );
@@ -1641,21 +1652,23 @@ function ModernCertificate({
   return (
     <div className="flex h-full flex-col text-left">
       <div>
-        <div className="flex items-start gap-3">
-          {logoSrc ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={logoSrc}
-              alt=""
-              className="max-h-12 w-auto max-w-[7rem] shrink-0 object-contain"
+        {logoSrc || fields.organization.trim() ? (
+          <div className="flex items-start gap-3">
+            {logoSrc ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={logoSrc}
+                alt=""
+                className="max-h-12 w-auto max-w-[7rem] shrink-0 object-contain"
+              />
+            ) : null}
+            <Slot
+              value={fields.organization}
+              placeholder=""
+              className="font-sans text-xs font-semibold uppercase tracking-widest text-accent"
             />
-          ) : null}
-          <Slot
-            value={fields.organization}
-            placeholder="Organization"
-            className="font-sans text-xs font-semibold uppercase tracking-widest text-accent"
-          />
-        </div>
+          </div>
+        ) : null}
         <p className="mt-5 font-sans text-xs font-semibold uppercase tracking-wider text-ink-muted">
           Awarded to
         </p>
@@ -1736,21 +1749,23 @@ function AcademyCertificate({
       <AcademyDecor />
       <div className="relative z-10 flex h-full flex-col justify-between p-5 pr-[50%] sm:p-8 sm:pr-[48%]">
         <div className="min-w-0">
-          <div className="flex items-center gap-3">
-            {logoSrc ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={logoSrc}
-                alt=""
-                className="max-h-10 w-auto max-w-[6rem] shrink-0 object-contain"
+          {logoSrc || fields.organization.trim() ? (
+            <div className="flex items-center gap-3">
+              {logoSrc ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={logoSrc}
+                  alt=""
+                  className="max-h-10 w-auto max-w-[6rem] shrink-0 object-contain"
+                />
+              ) : null}
+              <Slot
+                value={fields.organization}
+                placeholder=""
+                className="block min-w-0 truncate font-sans text-xs font-semibold uppercase tracking-widest text-ink-muted"
               />
-            ) : null}
-            <Slot
-              value={fields.organization}
-              placeholder="Organization"
-              className="block min-w-0 truncate font-sans text-xs font-semibold uppercase tracking-widest text-ink-muted"
-            />
-          </div>
+            </div>
+          ) : null}
 
           <p className="mt-5 font-sans text-xs font-semibold uppercase tracking-[0.16em] text-accent">
             Certificate of achievement
@@ -1814,19 +1829,21 @@ function MinimalCertificate({
 }: CertificateBaseProps) {
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-3">
-        {logoSrc ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
-            src={logoSrc}
-            alt=""
-            className="max-h-10 w-auto max-w-[6rem] shrink-0 object-contain"
-          />
-        ) : null}
-        <p className="font-sans text-xs text-ink-muted">
-          <Slot value={fields.organization} placeholder="Organization" />
-        </p>
-      </div>
+      {logoSrc || fields.organization.trim() ? (
+        <div className="flex items-center gap-3">
+          {logoSrc ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={logoSrc}
+              alt=""
+              className="max-h-10 w-auto max-w-[6rem] shrink-0 object-contain"
+            />
+          ) : null}
+          <p className="font-sans text-xs text-ink-muted">
+            <Slot value={fields.organization} placeholder="" />
+          </p>
+        </div>
+      ) : null}
 
       <div className="my-auto py-6">
         <Slot
@@ -1893,21 +1910,23 @@ function CeremonialCertificate({
   return (
     <div className="flex h-full flex-col items-center justify-between text-center">
       <div className="w-full">
-        <div className="flex flex-col items-center gap-3">
-          {logoSrc ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={logoSrc}
-              alt=""
-              className="max-h-12 w-auto max-w-[8rem] object-contain"
+        {logoSrc || fields.organization.trim() ? (
+          <div className="flex flex-col items-center gap-3">
+            {logoSrc ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={logoSrc}
+                alt=""
+                className="max-h-12 w-auto max-w-[8rem] object-contain"
+              />
+            ) : null}
+            <Slot
+              value={fields.organization}
+              placeholder=""
+              className="block font-sans text-xs font-semibold uppercase tracking-widest text-ink-muted"
             />
-          ) : null}
-          <Slot
-            value={fields.organization}
-            placeholder="Organization"
-            className="block font-sans text-xs font-semibold uppercase tracking-widest text-ink-muted"
-          />
-        </div>
+          </div>
+        ) : null}
 
         <p className="mt-5 font-serif text-sm uppercase tracking-[0.18em] text-accent">
           Certificate of achievement
