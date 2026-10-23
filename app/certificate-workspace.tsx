@@ -431,14 +431,21 @@ export function CertificateWorkspace() {
       setExportRecipient(name);
     });
 
+    if (document.fonts?.ready) {
+      await document.fonts.ready;
+    }
+
     await new Promise<void>((resolve) => {
       requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
     });
 
     return toPng(node, {
       pixelRatio: 2,
-      cacheBust: true,
+      cacheBust: false,
       skipFonts: false,
+      width: orientation === "portrait" ? 850 : 1100,
+      height: orientation === "portrait" ? 1100 : 850,
+      backgroundColor: template === "academy" ? "#F7F8FA" : "#FFFFFF",
     });
   }
 
@@ -1003,26 +1010,29 @@ export function CertificateWorkspace() {
         </section>
       </div>
 
+      {/* Offscreen wrapper only. The captured node must not carry
+          position/left: html-to-image copies those styles into the
+          SVG, which parks the clone outside the viewBox (blank PNG). */}
       <div
-        ref={exportSheetRef}
         aria-hidden
-        style={{
-          position: "fixed",
-          top: 0,
-          left: -10000,
-          width: orientation === "portrait" ? 850 : 1100,
-          height: orientation === "portrait" ? 1100 : 850,
-          pointerEvents: "none",
-          zIndex: -1,
-          ...templateTheme(template),
-        }}
-        className={`box-border ${sheetBgClass(template)} ${exportBorderClass(template)}`}
+        className="pointer-events-none fixed left-[-10000px] top-0 z-0"
       >
-        {renderCertificate(template, {
-          ...sharedCertProps,
-          recipientName: exportRecipient,
-          recipientEmpty: exportRecipient.trim() === "",
-        })}
+        <div
+          ref={exportSheetRef}
+          style={{
+            position: "relative",
+            width: orientation === "portrait" ? 850 : 1100,
+            height: orientation === "portrait" ? 1100 : 850,
+            ...templateTheme(template),
+          }}
+          className={`box-border ${sheetBgClass(template)} ${exportBorderClass(template)}`}
+        >
+          {renderCertificate(template, {
+            ...sharedCertProps,
+            recipientName: exportRecipient,
+            recipientEmpty: exportRecipient.trim() === "",
+          })}
+        </div>
       </div>
     </div>
   );
