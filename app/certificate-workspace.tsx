@@ -13,6 +13,7 @@ type TemplateId =
   | "academy";
 type Orientation = "portrait" | "landscape";
 type SignatureMode = "text" | "image";
+type ExportScale = 1 | 2;
 
 const templates: { id: TemplateId; label: string }[] = [
   { id: "classic", label: "Classic" },
@@ -285,6 +286,7 @@ export function CertificateWorkspace() {
   });
   const [isExporting, setIsExporting] = useState(false);
   const [exportRecipient, setExportRecipient] = useState("");
+  const [exportScale, setExportScale] = useState<ExportScale>(1);
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const [galleryPage, setGalleryPage] = useState(0);
   const exportSheetRef = useRef<HTMLDivElement>(null);
@@ -440,7 +442,7 @@ export function CertificateWorkspace() {
     });
 
     return toPng(node, {
-      pixelRatio: 2,
+      pixelRatio: exportScale,
       cacheBust: false,
       skipFonts: false,
       width: orientation === "portrait" ? 850 : 1100,
@@ -781,7 +783,40 @@ export function CertificateWorkspace() {
                 </div>
               </div>
 
-              <div className="flex flex-col gap-2 border-t border-rule pt-4">
+              <div className="flex flex-col gap-4 border-t border-rule pt-4">
+                <div className="flex flex-col gap-1.5">
+                  <label
+                    htmlFor="export-scale"
+                    className="text-sm font-semibold text-ink"
+                  >
+                    Export size
+                  </label>
+                  <select
+                    id="export-scale"
+                    value={exportScale}
+                    onChange={(event) =>
+                      setExportScale(Number(event.target.value) as ExportScale)
+                    }
+                    className="min-h-11 w-full rounded-md border border-field-border bg-white px-3 py-2.5 text-base text-ink transition-colors duration-150 hover:border-ink-muted focus:border-accent focus:outline-none focus-visible:outline-2 focus-visible:outline-accent"
+                  >
+                    <option value={1}>
+                      Standard (
+                      {orientation === "portrait" ? "850 × 1100" : "1100 × 850"}
+                      )
+                    </option>
+                    <option value={2}>
+                      High (
+                      {orientation === "portrait"
+                        ? "1700 × 2200"
+                        : "2200 × 1700"}
+                      )
+                    </option>
+                  </select>
+                  <p className="text-xs leading-5 text-ink-muted">
+                    Standard is smaller and fine for screen. High is sharper for
+                    print.
+                  </p>
+                </div>
                 <button
                   type="submit"
                   disabled={isExporting}

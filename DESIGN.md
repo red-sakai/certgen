@@ -66,6 +66,7 @@ The page is a **desk**, not a document of equal sections (R-05).
 | Multi-line recognition | Recognition accepts Enter; newlines print as separate lines |
 | Editable subtext with tokens | Default sentence under Recognition; `{{name}}` / `{{recognition}}` fill per recipient |
 | Export 1 → PNG, 2+ → ZIP | Matches batch size; single file when only one name, archive when many |
+| Export size Standard / High | 1× (850×1100) default for smaller files; 2× (1700×2200) when print sharpness is needed |
 | Ceremonial template (blue/white seal) | Fourth formal option: double blue frame, seal mark, centered ceremonial type |
 | Academy template (navy/electric diagonal) | Fifth option from owner reference image: light gray sheet, blue edge band under diagonal navy panel, `public/appkademiya-logo.png` on navy |
 
